@@ -1,0 +1,21 @@
+# ── User data — NEVER commit ──
+dunju_ai_memory.db
+*.db
+Backups/
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# ── Office temp files ──
+~$*
