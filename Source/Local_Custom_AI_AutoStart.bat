@@ -1,8 +1,8 @@
 @echo off
-title Dunju AI Backend v2.6.0
+title Dunju AI Backend v1.0.0
 echo.
 echo ================================================
-echo   Dunju AI Backend v2.6.0 - Starting...
+echo   Dunju AI Backend v1.0.0 - Starting...
 echo   Build. Automate. Scale.
 echo ================================================
 echo.

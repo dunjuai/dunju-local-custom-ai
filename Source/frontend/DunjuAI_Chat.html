@@ -220,6 +220,10 @@
   .msg-bubble pre{background:#0a0a1f;border:1px solid var(--border);border-radius:8px;padding:12px;margin:10px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.5;}
   .msg-bubble code{font-family:'JetBrains Mono',monospace;background:rgba(168,85,247,.15);padding:2px 6px;border-radius:4px;font-size:13px;}
   .msg-bubble pre code{background:transparent;padding:0;white-space:pre;}
+  .md-table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px;}
+  .md-table th{background:rgba(168,85,247,.22);color:#e9d5ff;font-weight:700;text-align:left;}
+  .md-table th,.md-table td{border:1px solid var(--border);padding:6px 10px;vertical-align:top;line-height:1.45;}
+  .md-table tr:nth-child(even) td{background:rgba(255,255,255,.03);}
   .code-wrap{position:relative;margin:10px 0;}
   .code-wrap pre{margin:0;}
   .code-copy{position:absolute;top:8px;right:8px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text-secondary);font-size:11px;cursor:pointer;opacity:0;transition:opacity .15s;}
@@ -306,6 +310,36 @@
   .formats-hint{font-size:10px;color:var(--text-muted);opacity:.7;}
   .backend-banner{padding:8px 20px;background:rgba(245,158,11,.1);border-bottom:1px solid rgba(245,158,11,.3);font-size:12px;color:var(--warning);display:none;text-align:center;}
   .backend-banner.show{display:block;}
+.sources-panel{margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:6px 12px;background:rgba(124,58,237,0.06);font-size:12px}
+.sources-panel summary{cursor:pointer;color:var(--purple-1);font-weight:600;list-style:none;padding:2px 0}
+.sources-panel summary::-webkit-details-marker{display:none}
+.source-item{margin:8px 0;padding:6px 10px;border-left:2px solid var(--purple-1);background:rgba(255,255,255,0.02);border-radius:4px}
+.src-n{color:var(--purple-1);font-weight:700}
+.src-name{color:var(--text-secondary);font-weight:600}
+.src-snip{color:var(--text-muted);margin-top:3px;line-height:1.45}
+.thinking-panel .think-body{white-space:pre-wrap;color:var(--text-muted);margin-top:6px;font-size:12px;line-height:1.5;max-height:300px;overflow:auto}
+.msg-actions{display:flex;gap:6px;margin-top:6px;opacity:0;transition:opacity .15s}
+.message:hover .msg-actions{opacity:1}
+.msg-act{background:transparent;border:1px solid var(--border);color:var(--text-muted);font-size:11px;padding:2px 8px;border-radius:6px;cursor:pointer}
+.msg-act:hover{color:var(--purple-1);border-color:var(--purple-1)}
+.msg-actions{position:relative}
+.export-menu{position:absolute;z-index:60;top:100%;left:0;background:#1a1530;border:1px solid var(--border);border-radius:8px;padding:4px;display:flex;flex-direction:column;gap:2px;box-shadow:0 8px 24px rgba(0,0,0,.45);margin-top:4px}
+.export-opt{background:transparent;border:none;color:var(--text-secondary);font-size:12px;text-align:left;padding:6px 14px;border-radius:5px;cursor:pointer;white-space:nowrap}
+.export-opt:hover{background:rgba(124,58,237,.25);color:#fff}
+.batch-file{padding:3px 6px;color:var(--text-secondary);font-size:12px}
+.batch-result{border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 0;background:rgba(255,255,255,.02)}
+.batch-rh{font-weight:600;color:var(--text);margin-bottom:4px}
+.batch-tag{font-size:10px;background:rgba(124,58,237,.25);color:var(--purple-1);padding:1px 7px;border-radius:10px;margin-left:6px}
+.batch-rb{color:var(--text-secondary);font-size:12.5px;line-height:1.5}
+.msg-stats{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:6px}
+.activity-list{max-height:360px;overflow:auto}
+.activity-row{display:flex;gap:12px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.activity-time{color:var(--text-muted);white-space:nowrap;min-width:150px}
+.activity-event{color:var(--text-secondary)}
+.activity-detail{color:var(--text-muted)}
+.thinking-ind{color:var(--text-muted);font-style:italic}
+.thinking-ind .tdot{display:inline-block;animation:tblink 1.4s infinite both;font-weight:700}
+@keyframes tblink{0%,80%,100%{opacity:.15}40%{opacity:1}}
 </style>
 </head>
 <body>
@@ -319,6 +353,9 @@
     <button class="new-chat-btn" onclick="newChat()" title="Alt+N">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       New Chat
+    </button>
+    <button class="new-chat-btn" style="background:transparent;border:1px solid var(--border);color:var(--text-secondary);margin-top:6px" onclick="openModal('batchModal')" title="Process a whole folder of documents">
+      📁 Batch Folder
     </button>
     <div class="sidebar-section">Recent Chats</div>
     <div class="chat-search"><input type="text" id="chatSearchInput" placeholder="🔍 Search chats...  (Ctrl+F)" oninput="filterChatList()"></div>
@@ -348,6 +385,9 @@
           </button>
           <div class="expert-dropdown-menu" id="expertDropdownMenu"></div>
         </div>
+        <button class="icon-btn" title="Export chat" onclick="exportChatMenu(this)" style="position:relative">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>
+        </button>
         <button class="icon-btn" title="Clear chat" onclick="clearChat()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>
@@ -451,6 +491,7 @@
           <div class="settings-tab" data-tab="documents" onclick="switchSettingsTab('documents')">Documents</div>
           <div class="settings-tab" data-tab="database" onclick="switchSettingsTab('database')">Database</div>
           <div class="settings-tab" data-tab="experts" onclick="switchSettingsTab('experts')">AI Experts</div>
+          <div class="settings-tab" data-tab="activity" onclick="switchSettingsTab('activity')">Activity</div>
           <div class="settings-tab" data-tab="about" onclick="switchSettingsTab('about')">About</div>
         </div>
         <div class="settings-panel" id="settingsPanel">
@@ -462,6 +503,29 @@
 </div>
 
 <!-- ══════════ EXPERT EDITOR MODAL ══════════ -->
+<div class="modal-overlay" id="batchModal">
+  <div class="modal-box" style="max-width:640px;">
+    <div class="modal-header">
+      <div class="modal-title">📁 Batch / Folder Automation</div>
+      <button class="modal-close" onclick="closeModal('batchModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row"><label>Folder path <span style="color:var(--text-muted)">(on this computer)</span></label><input type="text" id="batchFolder" placeholder="D:\Docs\Invoices"></div>
+      <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="batchRecursive" style="width:auto"> Include subfolders</label></div>
+      <div class="form-row"><label>Action</label>
+        <select id="batchAction" onchange="batchActionChange()" style="width:100%;padding:8px;border-radius:8px;background:var(--bg-input,#12101f);border:1px solid var(--border);color:var(--text)">
+          <option value="summarize">Summarize each file</option>
+          <option value="classify">Classify (invoice, resume, contract…)</option>
+          <option value="extract">Extract key data</option>
+          <option value="custom">Custom prompt…</option>
+        </select></div>
+      <div class="form-row" id="batchPromptRow" style="display:none"><label>Custom prompt</label><textarea id="batchPrompt" rows="2" placeholder="e.g. List the payment terms and due date"></textarea></div>
+      <div style="display:flex;gap:8px;margin:8px 0 12px"><button class="btn-secondary" onclick="batchScan()">🔍 Scan</button><button class="btn-primary" onclick="batchRun()">▶ Run</button><button class="btn-secondary" onclick="batchCopy()">📋 Copy results</button></div>
+      <div id="batchResults" style="max-height:340px;overflow:auto;font-size:13px"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="expertEditorModal">
   <div class="modal-box" style="max-width:520px;">
     <div class="modal-header">
@@ -473,6 +537,7 @@
       <div class="form-row"><label>Name</label><input type="text" id="expEditName"></div>
       <div class="form-row"><label>Emoji</label><input type="text" id="expEditEmoji" maxlength="2"></div>
       <div class="form-row"><label>Color (hex)</label><input type="text" id="expEditColor" placeholder="#a855f7"></div>
+      <div class="form-row"><label>Model <span style="color:var(--text-muted)">(optional — blank uses the default)</span></label><input type="text" id="expEditModel" placeholder="e.g. dunju-ai:latest"></div>
       <div class="form-row"><label>System Prompt</label><textarea id="expEditPrompt" rows="5"></textarea></div>
     </div>
     <div class="modal-footer">
@@ -491,6 +556,7 @@ let abortController=null;
 let attachedFiles=[];
 let activeSkill='General';
 let currentChatId=null;
+let activeDocIds=[];   // RAG: doc_ids indexed for the current chat (sent with each turn)
 
 // ── Live stream tracker: lets an in-progress AI reply survive chat switches ──
 let liveStream=null; // {chatId, bubble, text} while the model is typing
@@ -659,20 +725,26 @@ const DOC_TYPE_LABELS = {
 };
 
 function detectSmartActionSet(userText, aiReply, hadFiles, docType) {
-  const lower = (userText + ' ' + aiReply).toLowerCase();
+  // Priority 1: documents get type-specific actions (invoice, resume, contract…)
   if(hadFiles){
-    // Use the specific document type if we have a dedicated action set for it
     if(docType && SMART_ACTION_SETS[docType]) return docType;
     return 'document';
   }
-  if(/```sql/i.test(aiReply) || /select .* from/i.test(lower)) return 'sql';
-  if(activeSkill === 'Python' || /```python|```javascript|```/i.test(aiReply)) return 'code';
-  if(activeSkill === 'Power Automate' || /automat/i.test(lower)) return 'automation';
-  return 'general';
+  // Priority 2: actual code/SQL in the reply gets developer actions
+  if(/```sql/i.test(aiReply)) return 'sql';
+  if(/```/.test(aiReply)) return 'code';
+  // Priority 3: the active expert's own curated actions (from Settings > AI Experts)
+  return 'expert';
 }
 
 function renderSmartActions(container, actionSetKey) {
-  const actions = SMART_ACTION_SETS[actionSetKey] || SMART_ACTION_SETS.general;
+  let actions;
+  if(actionSetKey === 'expert'){
+    const expertActions = SKILLS[activeSkill]?.actions;
+    actions = (Array.isArray(expertActions) && expertActions.length) ? expertActions : SMART_ACTION_SETS.general;
+  } else {
+    actions = SMART_ACTION_SETS[actionSetKey] || SMART_ACTION_SETS.general;
+  }
   const wrap = document.createElement('div');
   wrap.className = 'smart-actions';
   const labelText = actionSetKey === 'sql' ? 'Next Actions' : 'Suggested Actions';
@@ -704,7 +776,8 @@ async function loadExpertsIntoSkills(){
       SKILLS[exp.name] = {
         emoji: exp.emoji || existing.emoji || '🤖',
         color: exp.color || existing.color || '#a855f7',
-        prompt: exp.system_prompt || existing.prompt || ''
+        prompt: exp.system_prompt || existing.prompt || '',
+        actions: Array.isArray(exp.suggested_actions) ? exp.suggested_actions : (existing.actions || [])
       };
     });
     if(!SKILLS[activeSkill]) activeSkill = 'General';
@@ -752,6 +825,7 @@ document.addEventListener('click', (e) => {
 function setSkill(skill){
   const prev = activeSkill;
   activeSkill = skill;
+  if(prev !== skill){ try{ fetch(BACKEND_URL+'/activity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'Expert selected', detail:skill})}); }catch(e){} }
   document.querySelectorAll('.skill-chip').forEach(c=>{c.classList.toggle('active',c.textContent.includes(skill));});
   // Update topbar dropdown label
   const label = document.getElementById('expertDropdownLabel');
@@ -812,6 +886,9 @@ async function handleFiles(files){
       entry.language=data.language||'English';
       entry.docType=data.doc_type||'general';
       entry.processingTime=data.processing_time||null;
+      entry.doc_id=data.doc_id||null;         // RAG: id of the indexed document
+      entry.indexed=!!data.indexed;           // RAG: true if chunks were embedded
+      entry.chunkCount=data.chunk_count||0;
       entry.stageIndex=2; entry.status='preview';
       renderFilesPreviews();
       await new Promise(r=>setTimeout(r,400));
@@ -950,6 +1027,8 @@ function addMessage(role,content,fileNames){
       <div class="msg-bubble">${filesHTML}${formatMessage(content)}</div>
     </div>`;
   container.appendChild(div);
+  if(isUser) div.dataset.q = content;
+  try{ div.querySelector('.msg-content').appendChild(makeMsgActions(role)); }catch(e){}
   if(isUser) autoScroll=true;
   scrollToBottom(isUser);
   return div.querySelector('.msg-bubble');
@@ -957,6 +1036,46 @@ function addMessage(role,content,fileNames){
 
 function escapeHtml(t){
   return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── LaTeX → plain text ──────────────────────────────────────────────
+// The model sometimes writes maths in LaTeX ($...$, \times, \text{}, \,).
+// We have no maths renderer (and want to stay offline), so we convert it
+// to clean, readable plain text: "3 units × Rs. 48,000 = Rs. 144,000".
+function cleanTeX(x){
+  return x
+    .replace(/\\\\/g,' ')
+    .replace(/\\times/g,'×')
+    .replace(/\\cdot/g,'·')
+    .replace(/\\div/g,'÷')
+    .replace(/\\pm/g,'±')
+    .replace(/\\leq/g,'≤').replace(/\\geq/g,'≥')
+    .replace(/\\neq/g,'≠').replace(/\\approx/g,'≈').replace(/\\equiv/g,'≡')
+    .replace(/\\rightarrow/g,'→').replace(/\\to/g,'→').replace(/\\Rightarrow/g,'⇒')
+    .replace(/\\infty/g,'∞').replace(/\\sum/g,'∑').replace(/\\prod/g,'∏')
+    .replace(/\\sqrt\{([^}]*)\}/g,'√($1)')
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g,'($1)/($2)')
+    .replace(/\\(?:text|mathrm|mathbf|mathit|operatorname)\{([^}]*)\}/g,'$1')
+    .replace(/\\left|\\right/g,'')
+    .replace(/\\[,;:!]/g,' ')     // \, \; \: \! thin/med spaces → space
+    .replace(/\\ /g,' ')          // backslash-space → space
+    .replace(/\\%/g,'%').replace(/\\&/g,'&').replace(/\\_/g,'_').replace(/\\#/g,'#')
+    .replace(/\^\{([^}]*)\}/g,'^$1').replace(/_\{([^}]*)\}/g,'_$1')
+    .replace(/\\[a-zA-Z]+/g,'')   // drop any remaining \command
+    .replace(/[{}]/g,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+function normalizeMath(s){
+  // Display maths: always convert
+  s = s.replace(/\$\$([\s\S]*?)\$\$/g,(m,x)=>cleanTeX(x));
+  s = s.replace(/\\\[([\s\S]*?)\\\]/g,(m,x)=>cleanTeX(x));
+  s = s.replace(/\\\(([\s\S]*?)\\\)/g,(m,x)=>cleanTeX(x));
+  // Inline $...$: only convert when it actually looks like LaTeX
+  // (has a backslash / ^ / _ / braces). Preserves real currency
+  // like "it costs $5 and $10".
+  s = s.replace(/\$([^$\n]+)\$/g,(m,x)=> /[\\^_{}]/.test(x)?cleanTeX(x):m);
+  return s;
 }
 
 function formatMessage(text){
@@ -972,6 +1091,47 @@ function formatMessage(text){
     return '\u0000I'+(inlineCode.length-1)+'\u0000';
   });
 
+  // 1a. Normalise LaTeX maths → plain text (code already safely extracted above)
+  t = normalizeMath(t);
+
+  // 1b. Extract markdown tables and convert to styled HTML grids
+  const tables=[];
+  t = (function(text){
+    const lines = text.split('\n');
+    const out=[];
+    const isSep = ln => /\|/.test(ln) && /-{2,}/.test(ln) && /^[\s|:\-]+$/.test(ln);
+    const cells = ln => ln.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(c=>c.trim());
+    const fmtCell = c => escapeHtml(c)
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g,'<em>$1</em>');
+    let i=0;
+    while(i<lines.length){
+      if(lines[i].includes('|') && i+1<lines.length && isSep(lines[i+1])){
+        const header = cells(lines[i]);
+        let j=i+2;
+        const body=[];
+        while(j<lines.length && lines[j].includes('|') && lines[j].trim()!==''){
+          body.push(cells(lines[j])); j++;
+        }
+        let html='<table class="md-table"><thead><tr>';
+        header.forEach(h=>{ html+='<th>'+fmtCell(h)+'</th>'; });
+        html+='</tr></thead><tbody>';
+        body.forEach(row=>{
+          html+='<tr>';
+          for(let k=0;k<header.length;k++){ html+='<td>'+fmtCell(row[k]||'')+'</td>'; }
+          html+='</tr>';
+        });
+        html+='</tbody></table>';
+        tables.push(html);
+        out.push('\u0000T'+(tables.length-1)+'\u0000');
+        i=j;
+      } else {
+        out.push(lines[i]); i++;
+      }
+    }
+    return out.join('\n');
+  })(t);
+
   // 2. Markdown formatting on prose only
   t = t
     .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
@@ -983,11 +1143,273 @@ function formatMessage(text){
     .replace(/^(\d+)\. (.+)$/gm,'<span style="color:var(--purple-1);font-weight:600">$1.</span> $2<br>')
     .replace(/\n/g,'<br>');
 
-  // 3. Restore code, HTML-escaped and untouched, with a Copy button
+  // 3. Restore tables first, then code (inline-code placeholders inside cells resolve last)
+  t = t.replace(/\u0000T(\d+)\u0000/g, (m,i)=>tables[+i]);
+
+  // 3b. Restore code, HTML-escaped and untouched, with a Copy button
   t = t.replace(/\u0000B(\d+)\u0000/g, (m,i)=>
     '<div class="code-wrap"><button class="code-copy" onclick="copyCode(this)">📋 Copy</button><pre><code>'+escapeHtml(codeBlocks[+i])+'</code></pre></div>');
   t = t.replace(/\u0000I(\d+)\u0000/g, (m,i)=>'<code>'+escapeHtml(inlineCode[+i])+'</code>');
   return t;
+}
+
+function renderSources(container, sources){
+  if(!container || !sources || !sources.length) return;
+  const d=document.createElement('details');
+  d.className='sources-panel';
+  const s=document.createElement('summary');
+  s.textContent='📄 Sources · '+sources.length;
+  d.appendChild(s);
+  sources.forEach(function(src){
+    const it=document.createElement('div');
+    it.className='source-item';
+    const loc=(src.chunk!=null?' · part '+(src.chunk+1):'');
+    it.innerHTML='<span class="src-n">['+src.n+']</span> <span class="src-name">'+escapeHtml(String(src.source||'document'))+loc+'</span><div class="src-snip">'+escapeHtml(String(src.snippet||''))+'…</div>';
+    d.appendChild(it);
+  });
+  container.appendChild(d);
+}
+
+function renderThinking(container, text){
+  if(!container || !text || !text.trim()) return;
+  const d=document.createElement('details');
+  d.className='sources-panel thinking-panel';
+  const s=document.createElement('summary');
+  s.textContent='💭 Reasoning';
+  d.appendChild(s);
+  const b=document.createElement('div');
+  b.className='think-body';
+  b.textContent=text.trim();
+  d.appendChild(b);
+  container.appendChild(d);
+}
+
+function makeMsgActions(role){
+  const bar=document.createElement('div');
+  bar.className='msg-actions';
+  const btns = role==='user'
+    ? [['✏️ Edit','editMsg'],['🌿 Branch','branchMsg']]
+    : [['🔄 Regenerate','regenMsg'],['🌿 Branch','branchMsg'],['⬇ Export','exportMenu']];
+  bar.innerHTML = btns.map(b=>'<button class="msg-act" onclick="'+b[1]+'(this)">'+b[0]+'</button>').join('');
+  return bar;
+}
+function msgList(){ return [...document.getElementById('messagesContainer').querySelectorAll('.message')]; }
+async function resendFrom(keepCount, text){
+  if(isGenerating){ showToast('Wait for the current reply to finish','✗'); return; }
+  keepCount=Math.max(0,keepCount);
+  messages.length=keepCount;
+  msgList().slice(keepCount).forEach(m=>m.remove());
+  if(currentChatId){
+    try{ await fetch(BACKEND_URL+'/chats/'+currentChatId+'/truncate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keep:keepCount})}); }catch(e){}
+  }
+  const input=document.getElementById('chatInput');
+  input.value=text; autoResize(input);
+  await sendMessage();
+}
+async function regenMsg(btn){
+  const all=msgList(); const idx=all.indexOf(btn.closest('.message'));
+  if(idx<1) return;
+  const q=all[idx-1].dataset.q||'';
+  if(!q){ showToast('Nothing to regenerate','✗'); return; }
+  await resendFrom(idx-1, q);
+}
+async function editMsg(btn){
+  const all=msgList(); const el=btn.closest('.message'); const idx=all.indexOf(el);
+  if(idx<0) return;
+  const edited=prompt('Edit your message and resend:', el.dataset.q||'');
+  if(edited===null) return;
+  const t=edited.trim(); if(!t) return;
+  await resendFrom(idx, t);
+}
+async function branchMsg(btn){
+  if(!currentChatId){ showToast('Send a message first','✗'); return; }
+  const idx=msgList().indexOf(btn.closest('.message'));
+  if(idx<0) return;
+  try{
+    const res=await fetch(BACKEND_URL+'/chats/'+currentChatId+'/branch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keep:idx+1})});
+    const data=await res.json();
+    await loadChatList();
+    await loadChat(data.id);
+    showToast('Branched into a new chat','🌿');
+  }catch(e){ showToast('Could not branch chat','✗'); }
+}
+
+function closeExportMenus(){ document.querySelectorAll('.export-menu').forEach(m=>m.remove()); }
+function exportMenu(btn){
+  closeExportMenus();
+  const menu=document.createElement('div'); menu.className='export-menu';
+  [['docx','📄 Word (.docx)'],['pdf','📕 PDF (.pdf)'],['pptx','📊 PowerPoint (.pptx)'],['xlsx','📈 Excel (.xlsx)']].forEach(function(o){
+    const b=document.createElement('button'); b.className='export-opt'; b.textContent=o[1];
+    b.onclick=function(e){ e.stopPropagation(); closeExportMenus(); exportMsg(o[0], btn); };
+    menu.appendChild(b);
+  });
+  btn.parentElement.appendChild(menu);
+  setTimeout(function(){ document.addEventListener('click', closeExportMenus, {once:true}); }, 0);
+}
+async function exportMsg(fmt, btn){
+  const idx=msgList().indexOf(btn.closest('.message'));
+  const content=(idx>=0 && messages[idx] && messages[idx].content) || '';
+  if(!content){ showToast('Nothing to export','✗'); return; }
+  showToast('Generating .'+fmt+'…','⬇');
+  try{
+    const res=await fetch(BACKEND_URL+'/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content, format:fmt, title:'Dunju AI Export'})});
+    if(!res.ok) throw new Error('bad status');
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='dunju-export.'+fmt;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    showToast('Exported .'+fmt,'✓');
+  }catch(e){ showToast('Export failed (.'+fmt+') — is the backend running?','✗'); }
+}
+
+let batchRunning=false; let _batchMarkdown='';
+function batchActionChange(){
+  document.getElementById('batchPromptRow').style.display = document.getElementById('batchAction').value==='custom' ? 'block' : 'none';
+}
+async function batchScan(){
+  const folder=document.getElementById('batchFolder').value.trim();
+  if(!folder){ showToast('Enter a folder path','✗'); return; }
+  const out=document.getElementById('batchResults'); out.innerHTML='Scanning…';
+  try{
+    const res=await fetch(BACKEND_URL+'/batch/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder, recursive:document.getElementById('batchRecursive').checked})});
+    if(!res.ok){ out.innerHTML='<span style="color:#f87171">Folder not found on this computer.</span>'; return; }
+    const data=await res.json();
+    out.innerHTML = data.count ? ('<div style="margin-bottom:6px">Found <b>'+data.count+'</b> file(s):</div>'+data.files.map(f=>'<div class="batch-file">📄 '+escapeHtml(f.name)+'</div>').join('')) : 'No supported files found in that folder.';
+  }catch(e){ out.innerHTML='<span style="color:#f87171">Scan failed — is the backend running?</span>'; }
+}
+function batchRenderRows(rows,total,done){
+  const out=document.getElementById('batchResults');
+  out.innerHTML='<div style="margin-bottom:8px;color:var(--text-muted)">Processed '+done+' / '+total+'</div>'+rows.map(function(r){
+    const body = r.error ? '<span style="color:#f87171">'+escapeHtml(r.error)+'</span>' : formatMessage(r.result||'');
+    const tag = r.doc_type ? ' <span class="batch-tag">'+escapeHtml(r.doc_type)+'</span>' : '';
+    return '<div class="batch-result"><div class="batch-rh">📄 '+escapeHtml(r.name)+tag+'</div><div class="batch-rb">'+body+'</div></div>';
+  }).join('');
+}
+async function batchRun(){
+  if(batchRunning) return;
+  const folder=document.getElementById('batchFolder').value.trim();
+  if(!folder){ showToast('Enter a folder path','✗'); return; }
+  const action=document.getElementById('batchAction').value;
+  const prompt=document.getElementById('batchPrompt').value.trim();
+  const out=document.getElementById('batchResults');
+  batchRunning=true; out.innerHTML='Starting…';
+  const rows=[]; let total=0, done=0;
+  try{
+    const res=await fetch(BACKEND_URL+'/batch/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder, recursive:document.getElementById('batchRecursive').checked, action, prompt})});
+    if(!res.ok){ out.innerHTML='<span style="color:#f87171">Could not start — folder not found?</span>'; batchRunning=false; return; }
+    const reader=res.body.getReader(); const dec=new TextDecoder(); let buf='';
+    while(true){
+      const rd=await reader.read(); if(rd.done) break;
+      buf+=dec.decode(rd.value); const lines=buf.split('\n'); buf=lines.pop();
+      for(const line of lines){ if(!line.trim()) continue; try{ const ev=JSON.parse(line);
+        if(ev.type==='start'){ total=ev.total; batchRenderRows(rows,total,done); }
+        else if(ev.type==='file'){ rows.push(ev); done++; batchRenderRows(rows,total,done); }
+      }catch(e){} }
+    }
+    batchRenderRows(rows,total,done);
+    _batchMarkdown='# Batch results ('+action+')\n\n'+rows.map(function(r){ return '## '+r.name+(r.doc_type?' ('+r.doc_type+')':'')+'\n\n'+(r.error?('Error: '+r.error):(r.result||'')); }).join('\n\n');
+    showToast('Batch complete: '+done+' file(s)','✓');
+  }catch(e){ out.innerHTML='<span style="color:#f87171">Batch failed — is the backend running?</span>'; }
+  batchRunning=false;
+}
+function batchCopy(){
+  if(!_batchMarkdown){ showToast('Run a batch first','✗'); return; }
+  try{ navigator.clipboard.writeText(_batchMarkdown); showToast('Results copied','📋'); }
+  catch(e){ showToast('Copy failed','✗'); }
+}
+
+async function encBackup(){
+  const pw=prompt('Set a password for this encrypted backup:\n\n⚠️ Store it safely — if you lose it, this backup cannot be recovered. (Your current data is NOT affected.)');
+  if(pw===null) return;
+  if(pw.length<4){ showToast('Password too short (min 4 characters)','✗'); return; }
+  try{
+    const res=await fetch(BACKEND_URL+'/database/backup/encrypted',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const data=await res.json();
+    if(res.ok){ showToast('Encrypted backup saved','🔒'); renderDatabaseSettings(); }
+    else throw new Error(data.detail||'Backup failed');
+  }catch(e){ showToast('Encrypted backup failed: '+(e.message||''),'✗'); }
+}
+async function encRestore(input){
+  const file=input.files[0]; input.value='';
+  if(!file) return;
+  const pw=prompt('Enter the password for "'+file.name+'":');
+  if(pw===null) return;
+  if(!confirm('Restore will REPLACE your current data with this encrypted backup.\nA safety copy of your current data is made first.\n\nContinue?')) return;
+  try{
+    const fd=new FormData(); fd.append('file',file); fd.append('password',pw);
+    const res=await fetch(BACKEND_URL+'/database/restore/encrypted',{method:'POST',body:fd});
+    const data=await res.json();
+    if(res.ok){ showToast('Restored — reloading','✓'); setTimeout(function(){ location.reload(); },1200); }
+    else throw new Error(data.detail||'Restore failed');
+  }catch(e){ showToast('Restore failed: '+(e.message||''),'✗'); }
+}
+
+function renderMsgStats(container, s){
+  if(!container) return;
+  const secs = s.dur ? (s.dur/1e9).toFixed(1) : (s.elapsed||'—');
+  const bar=document.createElement('div'); bar.className='msg-stats';
+  bar.innerHTML='<span>⏱ '+secs+'s</span><span>🧠 '+escapeHtml(s.model||MODEL)+'</span>'+(s.tokens?'<span>🔢 '+s.tokens+' tokens</span>':'')+'<span>'+(((SKILLS[s.skill]||{}).emoji)||'🤖')+' '+escapeHtml(s.skill||activeSkill)+'</span>';
+  container.appendChild(bar);
+}
+function buildChatMarkdown(){
+  const all=msgList(); if(!all.length) return '';
+  const title=(document.querySelector('.history-item.active .history-title')||{}).textContent || 'Dunju AI Chat';
+  let md='# '+title+'\n\n';
+  all.forEach(function(el,i){
+    const isUser=el.classList.contains('user');
+    const text=isUser ? (el.dataset.q||'') : ((messages[i]&&messages[i].content)||'');
+    md+='## '+(isUser?'You':'Dunju AI')+'\n\n'+text+'\n\n';
+  });
+  return md;
+}
+function exportChatMenu(btn){
+  closeExportMenus();
+  if(!msgList().length){ showToast('No chat to export','✗'); return; }
+  const menu=document.createElement('div'); menu.className='export-menu'; menu.style.right='0'; menu.style.left='auto';
+  [['pdf','📕 PDF'],['md','📝 Markdown'],['txt','📄 Text']].forEach(function(o){
+    const b=document.createElement('button'); b.className='export-opt'; b.textContent=o[1];
+    b.onclick=function(e){ e.stopPropagation(); closeExportMenus(); exportChat(o[0]); };
+    menu.appendChild(b);
+  });
+  btn.appendChild(menu);
+  setTimeout(function(){ document.addEventListener('click', closeExportMenus, {once:true}); },0);
+}
+async function exportChat(format){
+  const md=buildChatMarkdown(); if(!md.trim()){ showToast('Nothing to export','✗'); return; }
+  if(format==='md'||format==='txt'){
+    const text = format==='txt' ? md.replace(/^#+\s+/gm,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/`(.+?)`/g,'$1') : md;
+    const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='dunju-chat.'+format; a.click(); URL.revokeObjectURL(url);
+    showToast('Exported .'+format,'⬇'); return;
+  }
+  showToast('Generating PDF…','⬇');
+  try{
+    const res=await fetch(BACKEND_URL+'/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:md,format:'pdf',title:'Dunju AI Chat'})});
+    if(!res.ok) throw new Error();
+    const blob=await res.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='dunju-chat.pdf'; a.click(); URL.revokeObjectURL(url);
+    showToast('Exported PDF','⬇');
+  }catch(e){ showToast('PDF export failed','✗'); }
+}
+async function renderActivitySettings(){
+  const panel=document.getElementById('settingsPanel');
+  panel.innerHTML='<h4>Recent Activity</h4><div style="color:var(--text-muted);font-size:13px">Loading…</div>';
+  try{
+    const res=await fetch(BACKEND_URL+'/activity?limit=100');
+    const data=await res.json(); const items=data.activity||[];
+    const fmt=function(ts){ try{ return new Date(ts).toLocaleString(); }catch(e){ return ts; } };
+    panel.innerHTML='<h4>Recent Activity</h4>'+
+      (items.length ? '<div class="activity-list">'+items.map(function(a){ return '<div class="activity-row"><span class="activity-time">'+escapeHtml(fmt(a.ts))+'</span><span class="activity-event">'+escapeHtml(a.event)+(a.detail?' <span class="activity-detail">— '+escapeHtml(a.detail)+'</span>':'')+'</span></div>'; }).join('')+'</div>' : '<div style="color:var(--text-muted);font-size:13px">No activity yet.</div>')+
+      '<button class="btn-primary" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;margin-top:14px" onclick="clearActivity()">🗑️ Clear log</button>';
+  }catch(e){ panel.innerHTML='<h4>Recent Activity</h4><div style="color:var(--text-muted);font-size:13px">Backend offline.</div>'; }
+}
+async function clearActivity(){
+  if(!confirm('Clear the activity log?')) return;
+  try{ await fetch(BACKEND_URL+'/activity',{method:'DELETE'}); renderActivitySettings(); showToast('Activity cleared','✓'); }catch(e){ showToast('Failed','✗'); }
+}
+
+function thinkingHTML(label){
+  return '<span class="thinking-ind">'+label+'<span class="tdot" style="animation-delay:0s">.</span><span class="tdot" style="animation-delay:.2s">.</span><span class="tdot" style="animation-delay:.4s">.</span></span>';
 }
 
 function copyCode(btn){
@@ -1202,7 +1624,7 @@ async function deleteChat(event, chatId){
     await fetch(BACKEND_URL+'/chats/'+chatId, {method:'DELETE'});
     // If we deleted the currently open chat, go back to welcome screen
     if(chatId === currentChatId){
-      messages=[]; attachedFiles=[]; currentChatId=null;
+      messages=[]; attachedFiles=[]; currentChatId=null; activeDocIds=[];
       renderFilesPreviews();
       document.getElementById('messagesContainer').innerHTML='';
       document.getElementById('messagesContainer').style.display='none';
@@ -1237,6 +1659,7 @@ async function loadChat(chatId){
     currentChatId = chatId;
     messages = [];
     attachedFiles = [];
+    activeDocIds = Array.isArray(data.doc_ids) ? data.doc_ids : [];  // RAG: restore doc grounding
     autoScroll = true;
     renderFilesPreviews();
 
@@ -1312,9 +1735,20 @@ async function sendMessage(){
   const primaryDocType = pendingFiles.length ? pendingFiles[0].docType : null;
 
   // ── CONTEXT BUILDER decides how to construct the prompt ──
+  // RAG path: indexed docs are retrieved server-side per turn (send doc_ids,
+  // keep the message clean). Inline path (RAG off / embed model missing):
+  // fall back to embedding the document text directly in the message.
+  const ragOn = (appSettings.rag_enabled||'true') !== 'false';
   let fullContent;
   if(hadFiles){
-    fullContent = buildContext(text, pendingFiles);
+    const indexedFiles = pendingFiles.filter(f => ragOn && f.indexed && f.doc_id);
+    const inlineFiles  = pendingFiles.filter(f => !(ragOn && f.indexed && f.doc_id));
+    indexedFiles.forEach(f => { if(!activeDocIds.includes(f.doc_id)) activeDocIds.push(f.doc_id); });
+    if(inlineFiles.length){
+      fullContent = buildContext(text, inlineFiles);
+    } else {
+      fullContent = text || 'Please analyze the attached document(s) and provide a detailed summary with key insights.';
+    }
     attachedFiles = attachedFiles.filter(f => f.status !== 'ready');
     renderFilesPreviews();
   } else {
@@ -1344,14 +1778,18 @@ async function sendMessage(){
     const res=await fetch(BACKEND_URL+'/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:messages,system_prompt:getSystemPrompt(),model:MODEL,stream:true,chat_id:currentChatId,skill:activeSkill}),
+      body:JSON.stringify({messages:messages,system_prompt:getSystemPrompt(),model:MODEL,stream:true,chat_id:currentChatId,skill:activeSkill,doc_ids:(ragOn?activeDocIds:[])}),
       signal: _ctrl.signal
     });
     if(!res.ok) throw new Error('Backend error: '+res.status);
     removeTypingIndicator();
     const streamingOn = (appSettings.streaming||'true') !== 'false';
     liveStream={chatId:chatIdAtSend, bubble:addMessage('ai', streamingOn ? '' : '⏳ *Generating response...*'), text:''};
+    if(streamingOn) liveStream.bubble.innerHTML = thinkingHTML('✨ Thinking');
     let fullReply='';
+    let msgSources=null;
+    let msgThinking='';
+    let statTokens=0, statModel='', statDur=0; const _t0=Date.now();
     const reader=res.body.getReader();
     const decoder=new TextDecoder();
     while(true){
@@ -1371,6 +1809,9 @@ async function sendMessage(){
             }
           }
           if(data.error){ fullReply+=' [Error: '+data.error+']'; liveStream.text=fullReply; liveStream.bubble.innerHTML=formatMessage(fullReply); }
+          if(data.sources){ msgSources=data.sources; }
+          if(data.message?.thinking){ msgThinking += data.message.thinking; if(!fullReply && streamingOn) liveStream.bubble.innerHTML = thinkingHTML('💭 Reasoning'); }
+          if(data.done){ if(data.model) statModel=data.model; if(typeof data.eval_count==='number') statTokens=data.eval_count; if(typeof data.total_duration==='number') statDur=data.total_duration; }
         }catch(e){}
       }
     }
@@ -1393,6 +1834,9 @@ async function sendMessage(){
       // Viewing the chat this reply belongs to — attach smart actions
       const actionSetKey = detectSmartActionSet(displayText, fullReply, hadFiles, primaryDocType);
       const msgContent = finalBubble.closest('.msg-content');
+      if(msgSources && msgSources.length) renderSources(msgContent, msgSources);
+      if(msgThinking.trim()) renderThinking(msgContent, msgThinking);
+      renderMsgStats(msgContent, {model:statModel, tokens:statTokens, dur:statDur, elapsed:((Date.now()-_t0)/1000).toFixed(1), skill:activeSkill});
       renderSmartActions(msgContent, actionSetKey);
       scrollToBottom();
     } else if(currentChatId===chatIdAtSend){
@@ -1414,7 +1858,7 @@ async function sendMessage(){
 }
 
 function newChat(){
-  messages=[]; attachedFiles=[]; currentChatId=null; renderFilesPreviews();
+  messages=[]; attachedFiles=[]; currentChatId=null; activeDocIds=[]; renderFilesPreviews();
   const defExpert = (appSettings.default_expert && SKILLS[appSettings.default_expert]) ? appSettings.default_expert : 'General';
   setSkillSilent(defExpert);  // New chats always start with the default expert
   autoScroll=true;
@@ -1519,6 +1963,7 @@ function switchSettingsTab(tab){
   else if(tab === 'documents') renderDocumentsSettings();
   else if(tab === 'database') renderDatabaseSettings();
   else if(tab === 'experts') renderExpertsSettings();
+  else if(tab === 'activity') renderActivitySettings();
   else if(tab === 'about') renderAboutSettings();
 }
 
@@ -1585,8 +2030,10 @@ async function renderAISettings(){
     <div class="form-row"><label>Ollama URL</label><input type="text" id="setOllamaUrl" value="${appSettings.ollama_url||'http://localhost:11434'}"></div>
     <div class="form-row"><label>Temperature — <span id="tempVal">${temp}</span> <span style="color:var(--text-muted)">(lower = focused, higher = creative)</span></label>
       <input type="range" min="0" max="1.5" step="0.05" id="setTemperature" value="${temp}" oninput="document.getElementById('tempVal').textContent=this.value" style="width:100%"></div>
-    <div class="form-row"><label>Max Tokens <span style="color:var(--text-muted)">(response length limit)</span></label><input type="text" id="setMaxTokens" value="${appSettings.max_tokens||'2048'}"></div>
+    <div class="form-row"><label>Max Tokens — <span id="maxTokVal">${appSettings.max_tokens||'2048'}</span> <span style="color:var(--text-muted)">(higher = longer answers, but slower)</span></label>
+      <input type="range" min="1024" max="4096" step="256" id="setMaxTokens" value="${appSettings.max_tokens||'2048'}" oninput="document.getElementById('maxTokVal').textContent=this.value" style="width:100%"></div>
     <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="setStreaming" ${streamingOn?'checked':''} style="width:auto"> Streaming responses (show text as it's generated)</label></div>
+    <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="setReasoning" ${(appSettings.reasoning_mode||'false')==='true'?'checked':''} style="width:auto"> Reasoning mode <span style="color:var(--text-muted)">(let the model think through hard problems — slower; shows a 💭 Reasoning panel)</span></label></div>
     <button class="btn-primary" onclick="saveAISettings()">Save Changes</button>
   `;
 }
@@ -1598,7 +2045,8 @@ async function saveAISettings(){
     ollama_url: document.getElementById('setOllamaUrl').value,
     temperature: document.getElementById('setTemperature').value,
     max_tokens: isNaN(mt) ? '2048' : String(mt),
-    streaming: document.getElementById('setStreaming').checked ? 'true' : 'false'
+    streaming: document.getElementById('setStreaming').checked ? 'true' : 'false',
+    reasoning_mode: document.getElementById('setReasoning').checked ? 'true' : 'false'
   });
   await fetchSettings();
   MODEL = appSettings.default_model || MODEL;
@@ -1617,16 +2065,26 @@ async function renderDocumentsSettings(){
     <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="setAutoOcr" ${(appSettings.auto_ocr||'false')==='true'?'checked':''} style="width:auto"> Auto OCR for scanned documents <span style="color:var(--text-muted)">(takes effect once an OCR engine is installed)</span></label></div>
     <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="setExtractTables" ${chk('extract_tables','true')} style="width:auto"> Extract tables from documents</label></div>
     <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="setExtractImages" ${chk('extract_images','true')} style="width:auto"> Count &amp; report images in documents</label></div>
+    <h4 style="margin-top:18px">Smart Document Retrieval (RAG)</h4>
+    <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="setRagEnabled" ${chk('rag_enabled','true')} style="width:auto"> Enable smart retrieval <span style="color:var(--text-muted)">(reads whole documents of any length — needs <code>ollama pull ${appSettings.embedding_model||'nomic-embed-text'}</code>)</span></label></div>
+    <div class="form-row"><label>Embedding Model</label><input type="text" id="setEmbeddingModel" value="${appSettings.embedding_model||'nomic-embed-text'}"></div>
+    <div class="form-row"><label>Excerpts Retrieved Per Question</label><input type="text" id="setRagTopK" value="${appSettings.rag_top_k||'6'}"></div>
+    <div class="form-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="setRagHybrid" ${chk('rag_hybrid','true')} style="width:auto"> Hybrid search <span style="color:var(--text-muted)">(keyword + semantic — finds exact names, IDs &amp; figures)</span></label></div>
     <button class="btn-primary" onclick="saveDocumentsSettings()">Save Changes</button>
   `;
 }
 async function saveDocumentsSettings(){
   const mb = parseInt(document.getElementById('setMaxUpload').value,10);
+  const tk = parseInt(document.getElementById('setRagTopK').value,10);
   await saveSettingsPatch({
     max_upload_mb: isNaN(mb) ? '20' : String(mb),
     auto_ocr: document.getElementById('setAutoOcr').checked ? 'true' : 'false',
     extract_tables: document.getElementById('setExtractTables').checked ? 'true' : 'false',
-    extract_images: document.getElementById('setExtractImages').checked ? 'true' : 'false'
+    extract_images: document.getElementById('setExtractImages').checked ? 'true' : 'false',
+    rag_enabled: document.getElementById('setRagEnabled').checked ? 'true' : 'false',
+    embedding_model: (document.getElementById('setEmbeddingModel').value||'nomic-embed-text').trim(),
+    rag_top_k: isNaN(tk) ? '6' : String(tk),
+    rag_hybrid: document.getElementById('setRagHybrid').checked ? 'true' : 'false'
   });
   await fetchSettings();
   showToast('Document settings saved');
@@ -1651,10 +2109,13 @@ async function renderDatabaseSettings(){
       <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
         <button class="btn-primary" onclick="backupDatabase()">💾 Backup Database</button>
         <button class="btn-primary" style="background:var(--bg-card);border:1px solid var(--border);" onclick="document.getElementById('restoreDbInput').click()">📥 Restore Database</button>
+        <button class="btn-primary" style="background:var(--bg-card);border:1px solid var(--border);" onclick="encBackup()">🔒 Encrypted Backup</button>
+        <button class="btn-primary" style="background:var(--bg-card);border:1px solid var(--border);" onclick="document.getElementById('restoreEncInput').click()">🔓 Restore Encrypted</button>
         <button class="btn-primary" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;" onclick="clearAllChats()">🗑️ Clear All Chats</button>
       </div>
       <input type="file" id="restoreDbInput" accept=".db" style="display:none" onchange="restoreDatabase(this)">
-      <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">Backups are saved to the <strong>Backups</strong> folder next to Source. Restore replaces the current database (a safety copy is made first).</p>
+      <input type="file" id="restoreEncInput" accept=".dunjuenc" style="display:none" onchange="encRestore(this)">
+      <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">Backups are saved to the <strong>Backups</strong> folder next to Source. Restore replaces the current database (a safety copy is made first). <strong>Encrypted Backup</strong> creates a password-protected <code>.dunjuenc</code> file — your live data is never encrypted, so a lost password only affects that backup.</p>
     `;
   }catch(e){
     panel.innerHTML = '<h4>Database</h4><div style="color:var(--text-muted);font-size:13px;">Backend offline — cannot load database stats.</div>';
@@ -1773,6 +2234,7 @@ function openExpertEditor(expert){
   document.getElementById('expEditName').value = expert ? expert.name : '';
   document.getElementById('expEditEmoji').value = expert ? (expert.emoji||'🤖') : '🤖';
   document.getElementById('expEditColor').value = expert ? (expert.color||'#a855f7') : '#a855f7';
+  document.getElementById('expEditModel').value = expert ? (expert.model||'') : '';
   document.getElementById('expEditPrompt').value = expert ? (expert.system_prompt||'') : '';
   openModal('expertEditorModal');
 }
@@ -1783,7 +2245,8 @@ async function saveExpertEdit(){
     name: document.getElementById('expEditName').value.trim(),
     emoji: document.getElementById('expEditEmoji').value.trim() || '🤖',
     color: document.getElementById('expEditColor').value.trim() || '#a855f7',
-    system_prompt: document.getElementById('expEditPrompt').value.trim()
+    system_prompt: document.getElementById('expEditPrompt').value.trim(),
+    model: document.getElementById('expEditModel').value.trim()
   };
   if(!payload.name){ alert('Please enter an expert name.'); return; }
   try{

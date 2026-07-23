@@ -2,14 +2,19 @@
 Dunju AI — Document Engine
 Extracts clean text + metadata from all supported file types.
 Each extractor returns a consistent dict: {text, pages, tables, images}
+
+v2.7.0 — extractors accept max_chars / max_pages so the RAG pipeline can
+index the WHOLE document (full=True) while the inline preview path keeps
+the smaller default caps.
 """
 
 import time
 from pathlib import Path
-from config.settings import MAX_PAGES, MAX_CHARS
+from config.settings import MAX_PAGES, MAX_CHARS, MAX_PAGES_RAG, MAX_CHARS_RAG
 
 
-def extract_pdf(file_bytes: bytes, filename: str) -> dict:
+def extract_pdf(file_bytes: bytes, filename: str,
+                max_chars: int = MAX_CHARS, max_pages: int = MAX_PAGES) -> dict:
     try:
         import fitz
         doc = fitz.open(stream=file_bytes, filetype="pdf")
@@ -17,7 +22,7 @@ def extract_pdf(file_bytes: bytes, filename: str) -> dict:
         full_text = f"[PDF: {filename} — {page_count} pages]\n\n"
         table_count = 0
         image_count = 0
-        for page_num in range(min(page_count, MAX_PAGES)):
+        for page_num in range(min(page_count, max_pages)):
             page = doc[page_num]
             text = page.get_text()
             if text.strip():
@@ -32,12 +37,13 @@ def extract_pdf(file_bytes: bytes, filename: str) -> dict:
         if len(full_text.strip()) < 100:
             return {"text": f"[PDF: {filename} — scanned/image-based. No text extracted.]",
                     "pages": page_count, "tables": 0, "images": image_count}
-        return {"text": full_text[:MAX_CHARS], "pages": page_count, "tables": table_count, "images": image_count}
+        return {"text": full_text[:max_chars], "pages": page_count, "tables": table_count, "images": image_count}
     except Exception as e:
         return {"text": f"[PDF Error: {filename} — {e}]", "pages": None, "tables": None, "images": None}
 
 
-def extract_word(file_bytes: bytes, filename: str) -> dict:
+def extract_word(file_bytes: bytes, filename: str,
+                 max_chars: int = MAX_CHARS, max_pages: int = MAX_PAGES) -> dict:
     try:
         from docx import Document
         import io
@@ -55,12 +61,13 @@ def extract_word(file_bytes: bytes, filename: str) -> dict:
             for row in table.rows:
                 full_text += " | ".join(c.text.strip() for c in row.cells) + "\n"
         image_count = len(doc.inline_shapes)
-        return {"text": full_text[:MAX_CHARS], "pages": None, "tables": table_count, "images": image_count}
+        return {"text": full_text[:max_chars], "pages": None, "tables": table_count, "images": image_count}
     except Exception as e:
         return {"text": f"[Word Error: {filename} — {e}]", "pages": None, "tables": None, "images": None}
 
 
-def extract_excel(file_bytes: bytes, filename: str) -> dict:
+def extract_excel(file_bytes: bytes, filename: str,
+                  max_chars: int = MAX_CHARS, max_pages: int = MAX_PAGES) -> dict:
     try:
         import pandas as pd
         import io
@@ -78,12 +85,13 @@ def extract_excel(file_bytes: bytes, filename: str) -> dict:
             num_cols = df.select_dtypes(include="number").columns
             if len(num_cols) > 0:
                 full_text += "Summary Statistics:\n" + df[num_cols].describe().to_string() + "\n\n"
-        return {"text": full_text[:MAX_CHARS], "pages": sheet_count, "tables": sheet_count, "images": 0}
+        return {"text": full_text[:max_chars], "pages": sheet_count, "tables": sheet_count, "images": 0}
     except Exception as e:
         return {"text": f"[Excel Error: {filename} — {e}]", "pages": None, "tables": None, "images": None}
 
 
-def extract_csv(file_bytes: bytes, filename: str) -> dict:
+def extract_csv(file_bytes: bytes, filename: str,
+                max_chars: int = MAX_CHARS, max_pages: int = MAX_PAGES) -> dict:
     try:
         import pandas as pd
         import io
@@ -94,12 +102,13 @@ def extract_csv(file_bytes: bytes, filename: str) -> dict:
         num_cols = df.select_dtypes(include="number").columns
         if len(num_cols) > 0:
             full_text += "Summary Statistics:\n" + df[num_cols].describe().to_string() + "\n"
-        return {"text": full_text[:MAX_CHARS], "pages": None, "tables": 1, "images": 0}
+        return {"text": full_text[:max_chars], "pages": None, "tables": 1, "images": 0}
     except Exception as e:
         return {"text": f"[CSV Error: {filename} — {e}]", "pages": None, "tables": None, "images": None}
 
 
-def extract_pptx(file_bytes: bytes, filename: str) -> dict:
+def extract_pptx(file_bytes: bytes, filename: str,
+                 max_chars: int = MAX_CHARS, max_pages: int = MAX_PAGES) -> dict:
     try:
         from pptx import Presentation
         from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -119,12 +128,13 @@ def extract_pptx(file_bytes: bytes, filename: str) -> dict:
                 if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
                     image_count += 1
             full_text += "\n"
-        return {"text": full_text[:MAX_CHARS], "pages": slide_count, "tables": table_count, "images": image_count}
+        return {"text": full_text[:max_chars], "pages": slide_count, "tables": table_count, "images": image_count}
     except Exception as e:
         return {"text": f"[PowerPoint Error: {filename} — {e}]", "pages": None, "tables": None, "images": None}
 
 
-def extract_image_ocr(file_bytes: bytes, filename: str) -> dict:
+def extract_image_ocr(file_bytes: bytes, filename: str,
+                      max_chars: int = MAX_CHARS, max_pages: int = MAX_PAGES) -> dict:
     try:
         import easyocr
         import numpy as np
@@ -137,17 +147,18 @@ def extract_image_ocr(file_bytes: bytes, filename: str) -> dict:
         if not results:
             return {"text": f"[Image: {filename} — no text found]", "pages": 1, "tables": 0, "images": 1}
         extracted = "\n".join(text for (_, text, conf) in results if conf > 0.3)
-        return {"text": f"[Image OCR: {filename}]\n\n{extracted}", "pages": 1, "tables": 0, "images": 1}
+        return {"text": f"[Image OCR: {filename}]\n\n{extracted}"[:max_chars], "pages": 1, "tables": 0, "images": 1}
     except ImportError:
         return {"text": f"[Image: {filename} — EasyOCR not installed. Run: pip install easyocr]", "pages": 1, "tables": 0, "images": 1}
     except Exception as e:
         return {"text": f"[Image OCR Error: {filename} — {e}]", "pages": None, "tables": None, "images": None}
 
 
-def extract_text_file(file_bytes: bytes, filename: str) -> dict:
+def extract_text_file(file_bytes: bytes, filename: str,
+                      max_chars: int = MAX_CHARS, max_pages: int = MAX_PAGES) -> dict:
     try:
         text = file_bytes.decode("utf-8", errors="ignore")
-        return {"text": f"[Text File: {filename}]\n\n{text[:MAX_CHARS]}", "pages": None, "tables": None, "images": None}
+        return {"text": f"[Text File: {filename}]\n\n{text}"[:max_chars], "pages": None, "tables": None, "images": None}
     except Exception as e:
         return {"text": f"[Text Error: {filename} — {e}]", "pages": None, "tables": None, "images": None}
 
@@ -165,12 +176,19 @@ PROCESSORS = {
 }
 
 
-def process_file(file_bytes: bytes, filename: str) -> dict:
-    """Route to correct extractor, enrich with derived stats, return unified dict."""
+def process_file(file_bytes: bytes, filename: str, full: bool = False) -> dict:
+    """Route to the correct extractor, enrich with derived stats, return unified dict.
+
+    full=False → inline preview caps (MAX_CHARS / MAX_PAGES).
+    full=True  → RAG caps (MAX_CHARS_RAG / MAX_PAGES_RAG): index the whole document.
+    """
     start = time.time()
+    max_chars = MAX_CHARS_RAG if full else MAX_CHARS
+    max_pages = MAX_PAGES_RAG if full else MAX_PAGES
+
     ext = Path(filename).suffix.lower()
     processor = PROCESSORS.get(ext)
-    result = processor(file_bytes, filename) if processor else {
+    result = processor(file_bytes, filename, max_chars, max_pages) if processor else {
         "text": f"[Unsupported file type: {filename}]", "pages": None, "tables": None, "images": None
     }
     text = result.get("text", "")

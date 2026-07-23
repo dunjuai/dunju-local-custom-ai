@@ -22,11 +22,17 @@ DEFAULT_SETTINGS = {
     "temperature": "0.7",
     "max_tokens": "2048",
     "streaming": "true",
+    "reasoning_mode": "false",
     # Documents
     "max_upload_mb": "20",
     "auto_ocr": "false",
     "extract_tables": "true",
     "extract_images": "true",
+    # RAG (Retrieval-Augmented Generation)
+    "rag_enabled": "true",
+    "embedding_model": "nomic-embed-text",
+    "rag_top_k": "6",
+    "rag_hybrid": "true",
     # Database
     "last_backup": "",
 }

@@ -284,17 +284,18 @@ def get_expert_by_name(name: str) -> dict | None:
     return d
 
 
-def create_expert(name, emoji, color, system_prompt, suggested_actions=None, default_questions=None) -> dict:
+def create_expert(name, emoji, color, system_prompt, suggested_actions=None, default_questions=None, model="") -> dict:
     conn = get_db()
     now = datetime.now().isoformat()
     expert_id = str(uuid.uuid4())
     conn.execute("""
-        INSERT INTO experts (id, name, emoji, color, system_prompt, suggested_actions, default_questions, is_builtin, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        INSERT INTO experts (id, name, emoji, color, system_prompt, suggested_actions, default_questions, model, is_builtin, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
     """, (
         expert_id, name, emoji, color, system_prompt,
         json.dumps(suggested_actions or []),
         json.dumps(default_questions or []),
+        model or "",
         now, now
     ))
     conn.commit()

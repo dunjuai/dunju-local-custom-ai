@@ -50,6 +50,50 @@ def duplicate_chat(chat_id: str) -> dict | None:
     return {"id": new_id, "title": new_title, "skill": src["skill"], "created_at": now, "updated_at": now}
 
 
+def truncate_chat(chat_id: str, keep: int) -> bool:
+    """Delete all messages in a chat beyond the first `keep` (by id order)."""
+    conn = get_db()
+    ids = [r["id"] for r in conn.execute(
+        "SELECT id FROM messages WHERE chat_id = ? ORDER BY id ASC", (chat_id,)).fetchall()]
+    for mid in ids[max(0, keep):]:
+        conn.execute("DELETE FROM messages WHERE id = ?", (mid,))
+    conn.execute("UPDATE chats SET updated_at = ? WHERE id = ?",
+                 (datetime.now().isoformat(), chat_id))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def branch_chat(chat_id: str, keep: int) -> dict | None:
+    """Create a new chat containing a copy of the first `keep` messages."""
+    conn = get_db()
+    src = conn.execute("SELECT * FROM chats WHERE id = ?", (chat_id,)).fetchone()
+    if not src:
+        conn.close()
+        return None
+    now = datetime.now().isoformat()
+    new_id = str(uuid.uuid4())
+    new_title = "Branch of " + src["title"]
+    doc_ids = src["doc_ids"] if "doc_ids" in src.keys() else "[]"
+    conn.execute(
+        "INSERT INTO chats (id, title, skill, doc_ids, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (new_id, new_title, src["skill"], doc_ids, now, now)
+    )
+    ids = [r["id"] for r in conn.execute(
+        "SELECT id FROM messages WHERE chat_id = ? ORDER BY id ASC", (chat_id,)).fetchall()]
+    keep_ids = ids[:max(0, keep)]
+    if keep_ids:
+        ph = ",".join("?" for _ in keep_ids)
+        conn.execute(f"""
+            INSERT INTO messages (chat_id, role, content, display_content, file_names, created_at)
+            SELECT ?, role, content, display_content, file_names, created_at
+            FROM messages WHERE id IN ({ph}) ORDER BY id ASC
+        """, (new_id, *keep_ids))
+    conn.commit()
+    conn.close()
+    return {"id": new_id, "title": new_title, "skill": src["skill"], "created_at": now, "updated_at": now}
+
+
 def create_chat(title: str = "New Chat", skill: str = "General") -> dict:
     conn = get_db()
     now = datetime.now().isoformat()
@@ -83,7 +127,25 @@ def get_chat(chat_id: str) -> dict | None:
             "file_names": json.loads(m["file_names"]) if m["file_names"] else [],
             "created_at": m["created_at"]
         })
-    return {**dict(chat), "messages": msg_list}
+    chat_dict = dict(chat)
+    # doc_ids is stored as a JSON string — hand the frontend a real list
+    try:
+        chat_dict["doc_ids"] = json.loads(chat_dict.get("doc_ids") or "[]")
+    except (TypeError, ValueError):
+        chat_dict["doc_ids"] = []
+    return {**chat_dict, "messages": msg_list}
+
+
+def set_chat_docs(chat_id: str, doc_ids: list) -> bool:
+    """Persist the set of RAG document ids attached to a chat."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE chats SET doc_ids = ? WHERE id = ?",
+        (json.dumps(doc_ids or []), chat_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
 
 
 def save_message(chat_id: str, role: str, content: str,
@@ -129,6 +191,11 @@ def delete_all_chats() -> bool:
     conn = get_db()
     conn.execute("DELETE FROM messages")
     conn.execute("DELETE FROM chats")
+    # also clear the RAG vector store — orphaned chunks serve no purpose
+    try:
+        conn.execute("DELETE FROM doc_chunks")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
     return True

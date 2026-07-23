@@ -24,6 +24,7 @@ def init_db():
             id         TEXT PRIMARY KEY,
             title      TEXT NOT NULL,
             skill      TEXT DEFAULT 'General',
+            doc_ids    TEXT DEFAULT '[]',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
@@ -51,6 +52,7 @@ def init_db():
             system_prompt     TEXT NOT NULL,
             suggested_actions TEXT DEFAULT '[]',
             default_questions TEXT DEFAULT '[]',
+            model             TEXT DEFAULT '',
             is_builtin        INTEGER DEFAULT 0,
             created_at        TEXT NOT NULL,
             updated_at        TEXT NOT NULL
@@ -64,6 +66,30 @@ def init_db():
             updated_at TEXT NOT NULL
         )
     """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS activity_log (
+            id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts     TEXT NOT NULL,
+            event  TEXT NOT NULL,
+            detail TEXT
+        )
+    """)
+
+    # RAG vector store — one row per document chunk with its embedding
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS doc_chunks (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            doc_id       TEXT NOT NULL,
+            chat_id      TEXT,
+            source_name  TEXT NOT NULL,
+            chunk_index  INTEGER NOT NULL,
+            content      TEXT NOT NULL,
+            embedding    BLOB NOT NULL,
+            created_at   TEXT NOT NULL
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_doc_chunks_doc ON doc_chunks(doc_id)")
 
     conn.commit()
     conn.close()
@@ -94,7 +120,7 @@ def migrate_db():
         # Only act (and log) if any of them actually still exist
         existing = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
-        stale_found = [t for t in ("projects", "knowledge_files", "activity_log") if t in existing]
+        stale_found = [t for t in ("projects", "knowledge_files") if t in existing]
         if stale_found:
             for stale in stale_found:
                 conn.execute(f"DROP TABLE IF EXISTS {stale}")
@@ -185,6 +211,24 @@ def migrate_db():
                 conn.execute("ALTER TABLE chats_new RENAME TO chats")
                 conn.commit()
                 print("  Migration: project_id removed from chats cleanly")
+
+        # ── 4. Add chats.doc_ids column for RAG (v2.7.0) if missing ──
+        if "chats" in {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(chats)").fetchall()]
+            if "doc_ids" not in cols:
+                conn.execute("ALTER TABLE chats ADD COLUMN doc_ids TEXT DEFAULT '[]'")
+                conn.commit()
+                print("  Migration: added chats.doc_ids column (RAG)")
+
+        # ── 5. Add experts.model column (v2.9.0) if missing ──
+        if "experts" in {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}:
+            ecols = [r[1] for r in conn.execute("PRAGMA table_info(experts)").fetchall()]
+            if "model" not in ecols:
+                conn.execute("ALTER TABLE experts ADD COLUMN model TEXT DEFAULT ''")
+                conn.commit()
+                print("  Migration: added experts.model column")
 
     except Exception as e:
         print(f"  Migration error: {e}")
