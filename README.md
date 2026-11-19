@@ -167,8 +167,8 @@ Tests use a temporary database and never touch your real `dunju_ai_memory.db`.
 ## 💬 Support & contact
 
 - 🐛 Issues and feature requests: use the [GitHub Issues](../../issues) tab
-- 📧 Email: dunjuai.work@gmail.com
-- 💼 LinkedIn: [Dunju AI](https://www.linkedin.com/company/dunju-ai/) · [Sathya Swaminathan](https://www.linkedin.com/in/sathya-babu-abc529796/)
+- 📧 Email: contact@dunjuai.com
+- - 💼 LinkedIn: [Dunju AI](https://www.linkedin.com/company/dunju-ai/) · [Sathya Swaminathan](https://www.linkedin.com/in/sathya-babu-abc529796/)
 
 ---
 
