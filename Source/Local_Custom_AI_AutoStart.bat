@@ -1,16 +1,22 @@
 @echo off
-title Dunju AI Backend v1.0.0
+title Dunju AI Backend v1.0.1
 echo.
 echo ================================================
-echo   Dunju AI Backend v1.0.0 - Starting...
+echo   Dunju AI Backend v1.0.1 - Starting...
 echo   Build. Automate. Scale.
 echo ================================================
 echo.
+echo   The app will open in your browser at http://127.0.0.1:8000
+echo   Keep this window open while you use Dunju AI.
+echo.
 
-REM ── Portable: always run from the folder this .bat lives in ──
+REM -- Portable: always run from the folder this .bat lives in --
 cd /d "%~dp0"
 
-REM ── Find Python: try PATH first, then the py launcher, then known install ──
+REM -- Open the browser a few seconds after the backend starts --
+start "" /b cmd /c "timeout /t 4 /nobreak >nul & start "" http://127.0.0.1:8000"
+
+REM -- Find Python: try PATH first, then the py launcher, then known install --
 where python >nul 2>nul
 if %errorlevel%==0 (
     python main.py

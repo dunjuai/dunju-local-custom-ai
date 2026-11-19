@@ -1,7 +1,6 @@
 """
 Dunju AI — Chat Memory Engine
 All chat and message CRUD operations against SQLite.
-v2.5.0 — Removed project_id, activity log, dashboard stats
 """
 
 import json
@@ -36,9 +35,10 @@ def duplicate_chat(chat_id: str) -> dict | None:
     now = datetime.now().isoformat()
     new_id = str(uuid.uuid4())
     new_title = "Copy of " + src["title"]
+    doc_ids = src["doc_ids"] if "doc_ids" in src.keys() else "[]"
     conn.execute(
-        "INSERT INTO chats (id, title, skill, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-        (new_id, new_title, src["skill"], now, now)
+        "INSERT INTO chats (id, title, skill, doc_ids, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (new_id, new_title, src["skill"], doc_ids, now, now)
     )
     conn.execute("""
         INSERT INTO messages (chat_id, role, content, display_content, file_names, created_at)
@@ -143,6 +143,14 @@ def set_chat_docs(chat_id: str, doc_ids: list) -> bool:
         "UPDATE chats SET doc_ids = ? WHERE id = ?",
         (json.dumps(doc_ids or []), chat_id)
     )
+    # Documents are uploaded before the chat exists, so their chunks start with
+    # no chat_id. Claim them for this chat so cleanup can find them later.
+    if doc_ids:
+        ph = ",".join("?" for _ in doc_ids)
+        conn.execute(
+            f"UPDATE doc_chunks SET chat_id = ? WHERE chat_id IS NULL AND doc_id IN ({ph})",
+            (chat_id, *doc_ids)
+        )
     conn.commit()
     conn.close()
     return True

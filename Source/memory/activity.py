@@ -1,5 +1,5 @@
 """
-Dunju AI — Activity Log (v2.14.0)
+Dunju AI — Activity Log
 Lightweight local record of recent app events (uploads, chats, saves, backups…).
 Stored in SQLite; capped to the most recent 500 entries.
 """

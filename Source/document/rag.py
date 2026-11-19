@@ -1,6 +1,5 @@
 """
 Dunju AI — RAG Engine (Retrieval-Augmented Generation)
-v2.7.0
 
 Makes document size effectively unlimited on modest hardware.
 Pipeline:  full text -> chunks -> embeddings (local Ollama model)
@@ -14,9 +13,10 @@ inline-text behaviour instead of erroring.
 """
 
 import re
+import json
 import httpx
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from database.db import get_db
 from config.settings import (
@@ -421,10 +421,59 @@ def delete_doc_chunks(doc_id: str) -> int:
     return deleted
 
 
+def _doc_ids_in_chats(conn, exclude_chat_id: str = None) -> set:
+    """All document ids referenced by chats (optionally excluding one chat)."""
+    if exclude_chat_id:
+        rows = conn.execute("SELECT doc_ids FROM chats WHERE id != ?", (exclude_chat_id,)).fetchall()
+    else:
+        rows = conn.execute("SELECT doc_ids FROM chats").fetchall()
+    used = set()
+    for r in rows:
+        try:
+            used.update(json.loads(r["doc_ids"] or "[]"))
+        except (TypeError, ValueError):
+            pass
+    return used
+
+
 def delete_chunks_for_chat(chat_id: str) -> int:
+    """Delete the RAG chunks of the documents attached to `chat_id`.
+
+    Call this BEFORE deleting the chat row. Documents that another chat still
+    uses (a branch or duplicate shares its parent's documents) are kept.
+    """
     conn = get_db()
-    cur = conn.execute("DELETE FROM doc_chunks WHERE chat_id = ?", (chat_id,))
-    deleted = cur.rowcount
+    doc_ids = set()
+    row = conn.execute("SELECT doc_ids FROM chats WHERE id = ?", (chat_id,)).fetchone()
+    if row:
+        try:
+            doc_ids.update(json.loads(row["doc_ids"] or "[]"))
+        except (TypeError, ValueError):
+            pass
+    doc_ids.update(r["doc_id"] for r in conn.execute(
+        "SELECT DISTINCT doc_id FROM doc_chunks WHERE chat_id = ?", (chat_id,)).fetchall())
+    doc_ids -= _doc_ids_in_chats(conn, exclude_chat_id=chat_id)
+    deleted = 0
+    for d in doc_ids:
+        deleted += conn.execute("DELETE FROM doc_chunks WHERE doc_id = ?", (d,)).rowcount
+    conn.commit()
+    conn.close()
+    return deleted
+
+
+def cleanup_orphan_chunks(max_age_hours: int = 24) -> int:
+    """Remove chunks of documents that were uploaded but never attached to any
+    chat, once they are older than `max_age_hours`. Run at startup."""
+    cutoff = (datetime.now() - timedelta(hours=max_age_hours)).isoformat()
+    conn = get_db()
+    used = _doc_ids_in_chats(conn)
+    candidates = [r["doc_id"] for r in conn.execute(
+        "SELECT doc_id, MAX(created_at) AS ts FROM doc_chunks GROUP BY doc_id HAVING ts < ?",
+        (cutoff,)).fetchall()]
+    deleted = 0
+    for d in candidates:
+        if d not in used:
+            deleted += conn.execute("DELETE FROM doc_chunks WHERE doc_id = ?", (d,)).rowcount
     conn.commit()
     conn.close()
     return deleted

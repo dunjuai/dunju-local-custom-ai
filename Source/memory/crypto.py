@@ -1,5 +1,5 @@
 """
-Dunju AI — Backup Encryption (v2.13.0)
+Dunju AI — Backup Encryption
 Password-based AES encryption for database backups. Fully local/offline.
 
 Format: MAGIC (9 bytes) + salt (16 bytes) + Fernet token.

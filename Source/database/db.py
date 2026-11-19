@@ -1,7 +1,6 @@
 """
 Dunju AI — Database Layer
 SQLite connection, schema creation, and migrations.
-v2.5.1 — Fixed migration: disable FK before table surgery, drop chats_old safely
 """
 
 import sqlite3
@@ -98,7 +97,7 @@ def init_db():
 
 def migrate_db():
     """
-    Safe migration from v2.4.0 → v2.5.x.
+    Safe migration from pre-release builds (internal 2.4 → 2.5).
 
     The core problem: messages.chat_id has a FK → chats(id).
     When we rename chats → chats_old, SQLite silently rewires that FK to
@@ -212,7 +211,7 @@ def migrate_db():
                 conn.commit()
                 print("  Migration: project_id removed from chats cleanly")
 
-        # ── 4. Add chats.doc_ids column for RAG (v2.7.0) if missing ──
+        # ── 4. Add chats.doc_ids column for RAG (added in pre-release build 2.7) if missing ──
         if "chats" in {r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(chats)").fetchall()]
@@ -221,7 +220,7 @@ def migrate_db():
                 conn.commit()
                 print("  Migration: added chats.doc_ids column (RAG)")
 
-        # ── 5. Add experts.model column (v2.9.0) if missing ──
+        # ── 5. Add experts.model column (added in pre-release build 2.9) if missing ──
         if "experts" in {r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}:
             ecols = [r[1] for r in conn.execute("PRAGMA table_info(experts)").fetchall()]

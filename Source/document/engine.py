@@ -3,9 +3,9 @@ Dunju AI — Document Engine
 Extracts clean text + metadata from all supported file types.
 Each extractor returns a consistent dict: {text, pages, tables, images}
 
-v2.7.0 — extractors accept max_chars / max_pages so the RAG pipeline can
-index the WHOLE document (full=True) while the inline preview path keeps
-the smaller default caps.
+Extractors accept max_chars / max_pages so the RAG pipeline can index the
+WHOLE document (full=True) while the inline preview path keeps the smaller
+default caps.
 """
 
 import time
@@ -166,14 +166,34 @@ def extract_text_file(file_bytes: bytes, filename: str,
 # ── File router ──
 PROCESSORS = {
     ".pdf":  extract_pdf,
-    ".docx": extract_word, ".doc": extract_word,
-    ".xlsx": extract_excel, ".xls": extract_excel,
+    ".docx": extract_word,
+    ".xlsx": extract_excel,
     ".csv":  extract_csv,
-    ".pptx": extract_pptx, ".ppt": extract_pptx,
+    ".pptx": extract_pptx,
     ".txt":  extract_text_file, ".md": extract_text_file,
     ".png":  extract_image_ocr, ".jpg": extract_image_ocr,
     ".jpeg": extract_image_ocr, ".gif": extract_image_ocr, ".webp": extract_image_ocr,
 }
+
+
+# Old binary Office formats (Office 97-2003). The libraries we use only read the
+# modern XML formats, so these are rejected with a clear, actionable message.
+LEGACY_FORMATS = {
+    ".doc": ".docx",
+    ".xls": ".xlsx",
+    ".ppt": ".pptx",
+}
+
+
+def legacy_format_message(filename: str):
+    """Return a user-facing message if `filename` is an unsupported legacy
+    Office format, else None."""
+    ext = Path(filename or "").suffix.lower()
+    new = LEGACY_FORMATS.get(ext)
+    if not new:
+        return None
+    return (f"{ext} files (Office 97-2003) are not supported. Open the file in "
+            f"Office or LibreOffice and save it as {new}, then upload it again.")
 
 
 def process_file(file_bytes: bytes, filename: str, full: bool = False) -> dict:
@@ -188,6 +208,11 @@ def process_file(file_bytes: bytes, filename: str, full: bool = False) -> dict:
 
     ext = Path(filename).suffix.lower()
     processor = PROCESSORS.get(ext)
+    legacy = legacy_format_message(filename)
+    if legacy:
+        result = {"text": f"[{legacy}]", "pages": None, "tables": None, "images": None}
+        result.update(word_count=0, char_count=0, processing_time=0.0)
+        return result
     result = processor(file_bytes, filename, max_chars, max_pages) if processor else {
         "text": f"[Unsupported file type: {filename}]", "pages": None, "tables": None, "images": None
     }

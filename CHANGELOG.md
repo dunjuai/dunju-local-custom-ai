@@ -3,6 +3,35 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+> Builds before 1.0.0 were internal pre-releases numbered 2.x; some older notes and the first git commit refer to those numbers.
+
+## [1.0.1] — 2026-11-19
+
+Security and reliability release. **Upgrade recommended.**
+
+### Security
+- Backend now listens on `127.0.0.1` only (was `0.0.0.0`, reachable from the local network).
+- The backend serves the app page itself and requires a per-launch access token on every API call; the allow-all CORS policy is removed. Other websites can no longer read or change chats, trigger folder scans, or restore the database.
+- Requests with an unexpected `Host` header are rejected (DNS-rebinding protection).
+- AI replies, file names, chat titles, expert names and settings are HTML-escaped before display, so document-driven prompt injection cannot run script in the page. Added a strict Content-Security-Policy.
+- Batch automation only processes files inside the chosen folder.
+- Auto-reload (a development setting) is turned off.
+
+### Fixed
+- Removed the Google Fonts import so the app makes no external calls (system fonts are used).
+- `.doc`, `.xls` and `.ppt` uploads are rejected with a clear "save as .docx/.xlsx/.pptx" message instead of failing.
+- Upload size limit is now enforced by the backend, not just the browser.
+- Added missing `python-multipart` (required for uploads — fresh installs failed to start) and `numpy` to `requirements.txt`; image OCR (`easyocr`) is documented as optional.
+- Document index entries are now cleaned up when their chat is deleted (they previously accumulated), while documents still used by a branched or duplicated chat are kept. Duplicating a chat now keeps its documents.
+
+### Changed
+- Open the app at `http://127.0.0.1:8000`; the launcher opens it automatically.
+- The embedded logo moved to `Source/frontend/assets/`, shrinking the page from ~930 KB to ~145 KB.
+- Removed leftover internal pre-release version numbers (2.x) from source files.
+- Added an automated test suite (`python -m pytest`).
+- `/health` stays public (status and model names only) so it can be opened directly in a browser when troubleshooting.
+- Customer Guide and Internal Documentation updated to v1.0.1 (new start-up address, security model, troubleshooting entries).
+
 ## [1.0.0] — 2026-07-15
 
 First stable release of **Dunju Local Custom AI** — a private AI assistant that runs 100% on your own machine. No cloud, no subscription, no API keys, no data collection.

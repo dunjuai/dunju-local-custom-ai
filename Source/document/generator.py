@@ -1,5 +1,5 @@
 """
-Dunju AI — Document Generator (v2.11.0)
+Dunju AI — Document Generator
 Turn a chat reply (markdown) into a downloadable .docx / .pdf / .pptx / .xlsx.
 Fully local/offline. Uses python-docx, reportlab, python-pptx, openpyxl.
 """

@@ -19,3 +19,4 @@ desktop.ini
 
 # ── Office temp files ──
 ~$*
+.pytest_cache/

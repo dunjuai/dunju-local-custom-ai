@@ -2,12 +2,19 @@
 Dunju AI — Main Backend Entry Point
 Clean modular architecture. Each module has one responsibility.
 Build. Automate. Scale.
-v2.5.0 — Removed projects, knowledge base, activity log
+
+Security model: the backend listens on 127.0.0.1 only, serves the UI itself
+(same origin, so no CORS is needed), rejects requests whose Host header is not
+an allowed local name (blocks DNS-rebinding), and requires a per-launch access
+token on every API call. The token is embedded in the page served at "/".
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, Response
+import os
+import secrets
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
+from fastapi.responses import StreamingResponse, Response, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import httpx
@@ -17,11 +24,14 @@ import traceback
 from datetime import datetime
 
 # ── Internal modules ──
-from config.settings import OLLAMA_URL, DEFAULT_MODEL, HOST, PORT, APP_NAME, APP_VERSION, APP_BUILD, PHILOSOPHY, DB_PATH, MAX_CHARS
+from config.settings import (
+    OLLAMA_URL, DEFAULT_MODEL, HOST, PORT, ALLOWED_HOSTS, APP_NAME, APP_VERSION, APP_BUILD,
+    PHILOSOPHY, DB_PATH, MAX_CHARS, MAX_UPLOAD_MB, FRONTEND_DIR,
+)
 from database.db import init_db, migrate_db
 from ai.experts import seed_default_experts, get_all_experts, get_expert_by_name, create_expert, update_expert, delete_expert
 from ai.prompts import build_system_prompt
-from document.engine import process_file
+from document.engine import process_file, legacy_format_message
 from document.classifier import classify_document, detect_language, DOC_TYPE_LABELS
 from document.context_builder import build_context
 from document.generator import generate as generate_document
@@ -30,7 +40,7 @@ from memory.crypto import encrypt_bytes, decrypt_bytes
 from memory.activity import log_activity, recent_activity, clear_activity
 from document.rag import (
     rag_enabled, index_document, retrieve, retrieve_summary, is_summary_query,
-    build_rag_context, delete_doc_chunks, delete_chunks_for_chat,
+    build_rag_context, delete_doc_chunks, delete_chunks_for_chat, cleanup_orphan_chunks,
 )
 from memory.chat_memory import (
     list_chats, create_chat, get_chat, save_message,
@@ -51,17 +61,61 @@ async def lifespan(app: FastAPI):
     migrate_db()
     seed_default_experts()
     seed_default_settings()
+    try:
+        removed = cleanup_orphan_chunks()
+        if removed:
+            print(f"  RAG: removed {removed} orphaned document chunks")
+    except Exception as e:
+        print(f"  RAG cleanup skipped: {e}")
     yield
 
 # ── App setup ──
-app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan,
+              docs_url=None, redoc_url=None, openapi_url=None)
+
+# Per-launch access token. Set DUNJU_TOKEN to pin it (e.g. for scripts/tests).
+API_TOKEN = os.environ.get("DUNJU_TOKEN") or secrets.token_urlsafe(32)
+TOKEN_HEADER = "x-dunju-token"
+INDEX_FILE = FRONTEND_DIR / "DunjuAI_Chat.html"
+ASSETS_DIR = FRONTEND_DIR / "assets"
+
+
+@app.middleware("http")
+async def require_token(request: Request, call_next):
+    """Every API call must carry the token. Only the page itself, /health and the
+    static assets are public (the page is what hands the token to the browser; other
+    websites cannot read it because there is no CORS)."""
+    path = request.url.path
+    # /health is public too: it only reports up/down + model names, and support
+    # needs to open it directly in a browser when debugging.
+    if request.method == "GET" and (path in ("/", "/health", "/favicon.ico") or path.startswith("/assets/")):
+        return await call_next(request)
+    supplied = request.headers.get(TOKEN_HEADER, "")
+    if not secrets.compare_digest(supplied, API_TOKEN):
+        return JSONResponse(
+            {"detail": f"Missing or invalid access token. Open the app at http://127.0.0.1:{PORT} and reload the page."},
+            status_code=401,
+        )
+    return await call_next(request)
+
+
+# Added last = runs first: reject unexpected Host headers before anything else.
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+
+if ASSETS_DIR.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+
+_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; "
+        "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+
+
+def _max_upload_bytes() -> int:
+    try:
+        mb = float(get_setting("max_upload_mb", str(MAX_UPLOAD_MB)) or MAX_UPLOAD_MB)
+    except (TypeError, ValueError):
+        mb = MAX_UPLOAD_MB
+    return int(max(1, mb) * 1024 * 1024)
 
 
 # ════════════════════════════════════════════
@@ -162,8 +216,23 @@ class ActivityRequest(BaseModel):
 #  CORE ENDPOINTS
 # ════════════════════════════════════════════
 
-@app.get("/")
-async def root():
+@app.get("/", include_in_schema=False)
+async def index():
+    """Serve the app UI with this launch's access token embedded."""
+    if not INDEX_FILE.exists():
+        raise HTTPException(status_code=404, detail="Frontend file not found")
+    html = INDEX_FILE.read_text(encoding="utf-8").replace("__DUNJU_TOKEN__", API_TOKEN)
+    return HTMLResponse(html, headers={
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": _CSP,
+        "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+    })
+
+
+@app.get("/info")
+async def info():
     return {
         "service": APP_NAME, "version": APP_VERSION, "build": APP_BUILD,
         "philosophy": PHILOSOPHY, "ai_engine": "Ollama", "model": DEFAULT_MODEL,
@@ -194,8 +263,17 @@ async def health():
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), chat_id: Optional[str] = None):
     try:
-        file_bytes = await file.read()
-        filename = file.filename
+        filename = file.filename or "upload"
+        legacy = legacy_format_message(filename)
+        if legacy:
+            raise HTTPException(status_code=415, detail=legacy)
+        limit = _max_upload_bytes()
+        file_bytes = await file.read(limit + 1)
+        if len(file_bytes) > limit:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File is larger than the {limit // (1024 * 1024)} MB upload limit (Settings > Documents).",
+            )
         print(f"Processing: {filename} ({len(file_bytes)} bytes)")
 
         # Extract the FULL document (RAG caps) so nothing is lost to indexing.
@@ -242,6 +320,8 @@ async def upload_file(file: UploadFile = File(...), chat_id: Optional[str] = Non
             "chunk_count": chunk_count,
             "status": "success"
         }
+    except HTTPException:
+        raise
     except Exception as e:
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
@@ -315,7 +395,16 @@ async def api_batch_run(request: BatchRunRequest):
     scanned = scan_folder(request.folder, request.recursive)
     if scanned is None:
         raise HTTPException(status_code=400, detail="Folder not found or not a directory")
-    paths = request.files if request.files else [f["path"] for f in scanned]
+    allowed = [f["path"] for f in scanned]
+    if request.files:
+        # Only files that were found inside the chosen folder may be processed.
+        allowed_set = set(allowed)
+        rejected = [p for p in request.files if p not in allowed_set]
+        if rejected:
+            raise HTTPException(status_code=400, detail="Some files are not inside the selected folder")
+        paths = list(request.files)
+    else:
+        paths = allowed
     action = (request.action or "summarize").lower()
     prompts = {
         "summarize": "Summarize this document in 4-6 concise bullet points, focusing on the most important information.",
@@ -383,8 +472,10 @@ async def api_rename_chat(chat_id: str, request: RenameChatRequest):
 
 @app.delete("/chats/{chat_id}")
 async def api_delete_chat(chat_id: str):
+    # Remove this chat's RAG vectors first (needs the chat row to find its docs);
+    # documents still used by a branch/duplicate of this chat are kept.
+    delete_chunks_for_chat(chat_id)
     delete_chat(chat_id)
-    delete_chunks_for_chat(chat_id)   # clean up this chat's RAG vectors
     return {"status": "deleted"}
 
 
@@ -713,10 +804,12 @@ if __name__ == "__main__":
     print(f"  {APP_NAME} v{APP_VERSION}")
     print(f"  {PHILOSOPHY}")
     print("="*52)
-    print(f"  API:      http://localhost:{PORT}")
-    print(f"  Health:   http://localhost:{PORT}/health")
-    print(f"  Experts:  http://localhost:{PORT}/experts")
-    print(f"  Ollama:   {OLLAMA_URL}")
-    print(f"  Database: {DB_PATH}")
+    print(f"  Open the app:  http://127.0.0.1:{PORT}")
+    print(f"  Listening on:  {HOST}:{PORT}")
+    print(f"  Ollama:        {OLLAMA_URL}")
+    print(f"  Database:      {DB_PATH}")
+    if HOST not in ("127.0.0.1", "localhost"):
+        print("  WARNING: listening beyond this computer. Anyone who can open the")
+        print("           page on your network can use the app and read your chats.")
     print("="*52 + "\n")
-    uvicorn.run("main:app", host=HOST, port=PORT, reload=True)
+    uvicorn.run(app, host=HOST, port=PORT, reload=False)

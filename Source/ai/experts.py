@@ -2,7 +2,6 @@
 Dunju AI — AI Experts Engine
 Expert definitions, SQLite CRUD, and default seeding.
 Experts are stored in DB so users can create/edit without touching code.
-v2.5.0 — Streamlined to 6 core experts: General, Business, Kids, Coding, Medical, Fashion
 """
 
 import json

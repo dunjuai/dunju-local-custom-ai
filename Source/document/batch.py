@@ -1,5 +1,5 @@
 """
-Dunju AI — Batch / Folder Automation (v2.12.0)
+Dunju AI — Batch / Folder Automation
 Scan a folder on disk and run an action (summarize / classify / extract /
 custom) over every supported document. Fully local/offline.
 """

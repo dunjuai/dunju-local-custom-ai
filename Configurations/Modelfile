@@ -4,7 +4,7 @@ FROM qwen3.5:4b
 #  Model Parameters
 #  Tuned for business + code use case on 16GB RAM
 #
-#  NOTE (v2.6.0): temperature and response length are now
+#  NOTE: temperature and response length are now
 #  controlled per-request from the app (Settings > AI) and
 #  OVERRIDE the values below. The values here apply only
 #  when running `ollama run dunju-ai` directly in a terminal.
